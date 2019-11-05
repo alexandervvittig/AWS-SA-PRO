@@ -1137,4 +1137,173 @@ IP addressing in VPC (assuming 10.0.0.0/24)
 * If high durability is needed use S3
 
 ## EC2 Instance Profiles and Roles
-* 
+* Best practise to provide security credentials to the CLI or application that utilizes IAM roles
+* any IAM identity can get temp security credentials via STS assume rule
+* EC2 instance profile holds the rights 
+* whenever you create an ec2 instance, it automatically creates an instance profile 
+* it links the functionality of the IAM role with the functionality to the instance
+* EC2 instances have metadat if you browse: 
+    *  ```http://169.254.169.254/latest/meta-data/iam/security-credentials/ROLENAME```
+    * that's where you can get the temporary credentials
+    * stored as JSON object
+    * EC2 is working with STS in the background to constantly provide the latest credentials
+    * you can change the IAM role, but you can not attach multiple
+* if created from the console -> it happens automatically
+* if created from the API/CLI -> the two steps are distinct and must be done explicitly
+* Why associate IAM roles with instances?
+    * Whenver you CAN use IAM roles, you should do so
+    * IAM roles is prefered
+    * All applications should be able to access the meta-data
+    * if you want to block access, you need to use an internal instance firewall or some other traffic filtering technology
+    * you can't restrict access to the meta data from an external perspective
+* When to use AIM roles vs traditional credentials inside instances?
+* IP endpoint is an HTTP point, so not encypted, you have to manage the security all the way to the application leve
+* in case of an exploit you can reset the credentials by using the 'revoke session' feature
+
+## HPC and Placement Groups
+* HPC (High Performance Computing)
+* You can launch EC2 instance into a new or existing groups
+* only used when you need the MAX performance out of EC2
+* Different types of placement groups
+    * Cluster Placement Groups
+        * logical grouping of instances in a single AZ
+        * max performance
+        * Can't span AZ
+        * **Highest** troughput and **lowest** latency
+        * no oversubscribed networking path
+        * create placement group first -> then create instances in the group
+            * you can't modify an instance group and you might run into capacity issues if you try to add another instance after the fact as there might not be enough resources available to fulfull the cluster need
+        * better results if you profivion the same *type* of instances
+        * not every instance type supports cluster group
+        * are limited to a single AZ
+        * but can span a VPC peer 
+    * Partition Placement Groups
+        * isolated blocks of infrastructure in a AZ
+        * districbute instances across an even number of parttions
+        * get a better level of resiliance
+        * only needed when elevated performance and resiliance needed
+        * can't select that via the concole, only via API or CLI
+        * limited to 7 running partitions per AZ
+        * number of limited by account limit
+        * multiple AZ in the same region
+    * Spread Placement Group
+        * Can operate in multiple AZ
+        * are designed for a smaller set of infrastructure
+        * highest level of HA
+        * ensure all instances are running on different hardware
+        * you can add later as it seperates hardware on indpeendent fault domains
+        * can only have 7 running instances per AZ per group
+* Best Placement Group for Performance -> Cluster Placement Group
+* Best Placement Group for Resiliance -> Spread Placement Groups
+* 10 gig flow between isntances
+* if flow between placement group and other instances limited to 5 GB
+
+## Custom Logging to CloudWatch
+* by default cloudwatch monitors a lot of AWS 
+* external to the instnace
+    * see things like disk, cpu, mem, network bandwidth etc
+    * gathered from the EC2 host
+    * you can not get the information from inside the instance
+    * CloudWatch Agent does provide insight from inside the instance
+* IAM Role needs permissions for to read/write CloudWatchLogs and and CloudWatch as well as the Systems Manager
+* Manual Installation
+    * connect to instance
+    * download the latest version
+    * install the package
+    * create config file ```amazon-cloudwatch-agent.json``` 
+        * can be used to deply config at scale
+        * configure agent to send additional information to CF
+    * import the JSON and start the agent
+* Install it via Systems Manager
+    * Services -> Systems Manager
+    * run a command ```AWS-ConfigureAWSPackage```
+        * Actions -> Install
+        * Name -> AmazonCloudWatchAgent
+        * Version -> latest
+        * Select Instance
+    * parameter store dto deply configureation to many endpoints
+    * use the same JSON as the manual install
+    * run command ```AmazonCloudWatch-ManagerAgent```
+        * Actions -> Configure
+        * Optional Configuration Source -> SSM
+        * Optional Configuration Location -> Parameter
+        * Optional restart-> yes
+        * Select Instance
+* After the agent is setup we can see the logs in CloudWatch
+* This data can only get obtained from **inside** the instances
+* the config is stored insyste systems manager
+
+## Containers 101
+* ECS ( Amazon Elastic Container Service)
+* Containers
+    * small isolated environment
+    * designed to run an aplication within it
+    * it contains the application together with any libraries and other dependencies
+    * Best Practice is that it contains specific versions of those libraries and dependencies for stability
+    * a container is consistant and aways has the same known working version of applicationa nd libraries
+    * containers allow delevopers to write code that will always work in a given environment
+    * it allows them to ship the environment in a known working state to be run at its destination
+    * it enables true portability
+    * it allows applications that require differernt versions to run on the same host without conflits because everything is isolated
+    * similar to virtualization however with some critical differences
+        * Virtualization
+            * Infra -> HyperVisor -> VM -> OS -> Application
+        * Containerization
+            * Slightly less secure
+            * Infra -> OS -> Application (Container)
+            * no need for multiple OS
+            * uses by far less resources
+            * faster than VMs to start up
+            * containers can start in seconds
+            * kernel level assistance (e.g. Docker)
+            * docker file 
+            * Container image ( similar to a disk)
+            * docker file specifies the base image (e.g. Ubuntu)
+                * additional line, software installation creates a different file system
+                * each only represents the configuration change
+                * container layers can be re-used
+            * container images are like a disk
+            * take a container image and make a container
+            * images are stored on container images
+            * take an image and create a container 
+            * containe can have mappings
+            * container can access AWS services and other resources
+            * container is a fully fledged entity
+            * internal ports can be mapped to internal or external hosts
+                * e.g. multiple apache containers using port 80
+            * designed to be portable
+            * can be deployed on any **compatable** container host
+
+## ECS Architecture
+* Elastic Container Service
+    * Cluster -> collection of compute resources to host the containers as well as the definitions of the containers
+    * Task defnition -> configuration file that specify what ECS should do
+    * A task can cause a container to be initialized
+        * 2 methods to launch a task:
+            * EC2 -> traditional start
+            * designed to operate a container
+            * ECS agent communicates with the ECS service
+        * FarGate
+            * FarGate Launch type
+            * managed service that will launch containers for you
+            * each task is isolated
+            * no need to manage the operations
+            * AWS VPC networking mode only
+* ECS Architecture
+    * Cluster:</br>
+    Are groupings of tasks and services inside ECS. They cna be managed EC2 instances, or AS managed via FarGate. Self-managed clusters can be scaled, can can use on-demand or spot pricing
+    * Service:</br>
+    Services allow additional an ECS admin to maintain a specific number of task instances whthin an ECS cluster. SErvices allow load balancing accorss tasks using a ELB and allow configuration of scaling and availability
+    * Task definition:</br>
+    Desfines the task, contains the container definition(s). configures how the container interacts within ECS. The name, network mode, the execution role, and the Launch type. Task definitions can contain multiple containers.
+    * Container definition:</br>
+    The part of a task definition which configured the capabilities of the container the task operates within the container image, the memory limits, any port mapping, storage, GPU attachemnts and such more
+* [ECS DeepDive Course](https://linuxacademy.com/cp/modules/view/id/261)
+* Networking modes:
+    * nom -> no networking access
+    * bridge -> internal networking (software defined)
+    * host -> maps diretly to the host networking (fast but limited port per host)
+    * AWS VPC -> maps network interface directly to the container (FarGate only)
+* Windows types only supports NAT
+
+## ECS Security
