@@ -1307,3 +1307,361 @@ IP addressing in VPC (assuming 10.0.0.0/24)
 * Windows types only supports NAT
 
 ## ECS Security
+* DEMO
+* uses security groups between container for AWS vpc network rule
+* you can always use network ACLs, but traffic needs to be between subnets for thme to work
+* provide permissions to container hosts as well containers
+* fargate -> permissions given to tasks (tasks only)
+* EC2 types -> tasks, contaer and container hosts
+    * instance role gives ecs permissions (also to log to cloudwatch logs)
+    * IAM role
+    * self managed container hosts
+    * AWS logs drivers (needs correct permissions via role attached to container instance)
+    * role can be attached to task
+        * via IAM role
+        * you want to limit role only to permissions you need
+        * task role
+* you don't manage the conainer hosts with fargate
+* [aws log driver](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html)
+* [IAM Roles for Tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+
+
+## Serverless and Event-Driven Architectures
+* Serverless
+    * event driven
+    * capable of scaling
+    * only consume resources when a specific event occurs
+* Use products delivered as a service (e.g. S3) rather than servers
+* more cost savings and scalable
+* can react to changes
+* event drive can be super automated
+* Lambda can act uppon tasks
+* only consumes resources when utilized
+* e.g. dynamo db, SQS, lambda, APi gw, etc
+
+## Lambda Architecture: Part 1
+* Lambda is a function as a service
+    * Lambda function (you or web interfaces packages it)
+    * Lambda function is actual code
+    * Lambda zip is 'compiled' code
+    * Lambda should do one activity
+    * Lambda  functions have time limits (15 minutes)
+    * you can chain Lambda functions
+    * 1 tasks, do it well.
+    * if you want to execute a python function, you need the python runtime
+    * Architecture
+        * Lambda takes code
+        * packages the runtime
+        * installs it in a sandbox (created and destryed each time the function runs)
+        * cold start (takes a bit longer to execute function)
+        * sandbox is unique to the lambda function
+        * warm sandbox / warm stat is quicker
+        * lambda does not need to be aware of infrastructure
+
+* Legacy VS New Arch
+    * Legacy 
+        * all resources are shared
+        * guest OS is installed (e.g. EC2 instances)
+        * guest os was dedicated to your account
+        * sand boxes were installed and dedicated to each function
+        * sandbox could only run a single function, not different functions
+        * if the same function needed to be executed parallel, more sandboxes were needed
+        * 3 tier (hardware, OS, hypervisor) was shared accross all customers
+    * New Arch
+        * based on firecracker
+        * micro vm product
+        * benefit: no longer 3 tier, reduced to 2 (hardware, hypervisor), no longer in between OS
+        * micro vms are dedicated to functions
+        * easier to manage and better deinsity for AWS
+* Lambda is  invoke (manually or response to event source)
+* obtains it's permissions via an IAM role
+* you can specify environment varialbes (encrypted via KMS)
+* capable of receveing event source data 
+* work outside and inside of VCP so they may or may not be restriced by the VPC
+* ENI attached to worker (might take a bit of time)
+* remote now can use multiple ELI functions
+* [aws lambda deepdive YT](https://www.youtube.com/watch?v=QdzV04T_kec)
+
+## Lambda Architecture: Part 2
+    * event driven and as close to real time as possible
+    * inline policy that gives permissions to cheack the ACLs
+    * log details to cloudwatch logs
+    * given permissio via execution role
+    * there is a temp folder, but that data might be lost (not persistant)
+    * cold and warm start
+
+## Lambda Layers
+* new feature that adds flexibility
+* you can load a zip file
+* deployment packages need to be added if you use packages that are not default 
+* any libraries and dependencies needed to be loaded
+* you can add runtime support and packages via layers
+* layers are immutable / static
+* you can store commonly used packages in layers
+* limited to 250 mb
+* you can use up to 5 layers per lambda function
+* layers are extracted into the /opt folder
+* [Layer references](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html#configuration-layers-path)
+
+## API Gateway
+* API - Application Programming Interfaces
+    * way software components can talk to other software components
+* REST API / WEBSOCKET API
+    * rest - calling know URL, request insert data and gets respone 
+    * websocket more interactive
+* API needs to be published and run 24/7 
+* good condidate for serverless architecture
+* API can interact with backend services
+* API is a regional service
+* you can use edge locations
+* API can be provisioned in VPC
+* API has different versions / stages
+* update API with a new stage
+    * API URL
+    * 
+    * when clicking on URL you enter the root method
+    * API is more about the DevOps certification
+    * integration
+        * mock intergration (used during dev but no backendfunctionality)
+    * API GW can intergrate with Lambda
+* [API in production](https://www.youtube.com/watch?v=tIfqpM3o55s)
+* [API Caching](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-caching.html)
+* [API with HTTP Integration](https://docs.aws.amazon.com/apigateway/latest/developerguide/getting-started-http-integrations.html)
+* [API with AWS Integration](https://docs.aws.amazon.com/apigateway/latest/developerguide/getting-started-aws-proxy.html)
+* Protection: you can use WAF (web application firewall)
+* does fully log and monitor
+* you can use it with w-ray (for debugging and tracing)
+* how to update
+* what can be integrated
+* can be pushed to edge location
+* waf can filter apis
+* api has direct read and write
+* used the web federation playground (?)
+* sensitive data should be on the backend, not in the browser
+* API can call another API that's in a VPC (extra layer of filtering)
+
+## WS Service Resilience
+* Things can be resiliant on the Global, Region or Az level
+    * IAM
+        * global product
+        * not in a specific region
+        * 
+    * EC2
+        * per hardware per AZ
+        * EBS valumes are in AZ as well
+        * AZ could be 1 or 3 datacenters
+        * AZ is a single, isolated fault domain
+        * limited to a single AZ
+        * snapshot is on S3 and is replicated accross different AZ in a region
+            * add global level resiliance
+    * S3 resiliant on regional level
+        * across 3 or more AZ in the region
+        * namespace is global
+        * actual data is stored in a particular region 
+    * Route 53
+        * resiliant accorss regions
+        * uses edge locations
+    * ELB [load balancer]
+        * regional services 
+        * created per AZ
+    * VPC
+        * regional service
+        * can operate in all AZ
+        * spans the entire region
+        * subnets are linked to AZ
+        * can create multi AZ architecture via subnets for better resiliance
+    * NAT Gateway
+        * not truley resiliant by design
+        * provides hardware level resiliance
+        * Can tolerate hardware failure, but if AZ fails, all are lost
+        * put one NAT GW into each AZ
+    * Auto Scaling Groups
+        * can manage deployment of instances thorough a region
+        * accross AZ
+        * you can specify min and max
+        * automatially done by default, resiliant per region
+        *
+    * VPN
+        * VP Gateway
+        * attached to VPC
+        * resiliant through AZ
+
+## Stateless Architectures
+* Stateless ARchitecture
+    * monolithic (unscalable)
+        * all components are on one server
+        * can't split up
+        * can scale and load balance as well
+        * limited on functionality
+        * e.g. web server would have all, database, session info,web server, service and front end
+    * Stateless
+        * user ocnnection is tranparently moved to a new instance
+        * higher level of resiliance
+        * you want to aim to design stateless
+        * works well with lambda
+* Scaling an appliction
+    * vertical
+        * increse resources assigned to instance
+        * issues -> max size limitation
+        * all 'eggs in one basket'
+        * can't scale on each component
+    * horizontal
+        * inceasing or decreating the number of instances
+        * session state seperate from instances
+        * each componant is individual
+        * elasiticity
+        * good performance price ration
+        * scales up or down depending on demand
+
+## Deciding between Spot and Reserved Instances
+* Reserved
+    * great savings in billing if you commit to longer term  term (12-36 months)
+    * 3 payment options
+        * all upfront
+        * partial upfront
+        * no upfront
+    * can be used for EC2 instances, RDS instances, DynamoDB performance and other services
+    * can reserve capacity, thus high startup priority
+* On Demand
+    * default billing model
+    * you only pay for what you use
+        * per hour
+        * per GB
+    * good for ad-hoc usage when unsure on the need
+    * standard startup priority
+* Spot instance
+    * ideal for sporadic worloads that can tolerate interruption
+    * can be way cheaper than on demand
+    * not super reliable
+    * can be actually more expensive if there is a high demand
+    * lowest startup priority
+
+## Implementing Auto Scaling Groups (ASGs): Part 1
+* EC2 feature
+* AutoScalingGroups provide HA
+* works both ways (outbound and inbound)
+* there are different methods to scale
+    * AMI baking
+        * setup the config needed
+        * create an image of a pre-configured machine
+        * use this to provision new instances
+        * can be done at scale without additional config
+        * the more baked in the less configuration options is available
+        * not flexiable
+        * fast
+    * bootstrapping
+        * ec2 feature / user data
+        * passing in user data on instance build
+        * inverse of AMI baking
+        * config and setup is performed live
+        * changing the user data is easy
+        * new config adds processing time
+        * more flexiable
+
+## Implementing Auto Scaling Groups (ASGs): Part 2
+* featureset provided by AWS
+* allows the system automatically to adjust the amount of instances based on the given load
+* autoscaling + launch template
+* launch config (template) contains the config info of the EC2 instances
+* auto scaling group governs where and when instances get deployed
+* launch configuration -> configuraiton of the instance
+* launch configuration includes info about billing ( on demand, spot.  IAM role,IP address, monitoring,storage, security groups etc.)
+* once create a launch config it is immutable ( can't change it)
+* if you want to change it you have to create a new one
+* then change to launch config in the auto scaling group
+* launch config is the legacy way ( not reccomended for new deployments)
+* launch template
+    * improve instance config
+    * similar to launch config
+    * need to specify AMI
+    * pick instance type
+    * select key pair
+    * VPC or classic
+    * security group
+    * network, storage
+    * set advanced details
+    * launch templates can get edited (new version)
+        * can be from scracth or use the existing template as starting point
+* Auto Scaling Group
+    * 3 different ceriterias for the number of instances
+        * desired count
+        * max count
+        * min count
+    * need to define subnets
+        * select all subnets
+    * need to define VPS / location
+    * you can optionally setup loadbalancer
+    * has build in health checks (afer 300 seconds / 5 minutes)
+        * if you have a complicated bootstrapping this might need more time
+    * can send notification to let you know if there is change
+
+## Implementing Auto Scaling Groups (ASGs): Part 3
+* self healing if setup right , without user interaction
+* scaling policy with extreme lists
+    * step scaling lets you fine adjust scaling
+    * target tracking 
+    * simple scaling 
+    * scheduled actions
+    * cooldown timers
+    * [Referece Termination Policy](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-instance-termination.html)
+    * monitoring is provided to cloudwatch
+    * group metric collection, need to be enable on a per autoscaling group basis
+    * can suspend processes and settings in the Autoscaling group
+    * you can detach or set an instance on stanby (e.g. for maintenance)
+
+## Multi-AZ Implementations
+* nominal cpapcity
+* how well the app cna work in reduced capacity
+* you can purchase reserved capabilty in the remaining AZ to tolerate failure
+* over provision by going above 100% capacity
+* spread instances across more AZ
+* increasing AZ will decrease the amount of buffer
+* if possible provision in at least 2 AZ
+* production should be at least 3 for resiliance
+
+## Elastic Load Balancers: Part 1 - Essentials
+* accept connections form clients (e..g web browser) and distribute them between one and more backend server
+* designed to intergrate with auto scaling groups
+* elastic is a HA and and scalable LB
+* you can use route53 , but ELB has it's own DNS server
+* distributes incoming connections evenly
+    * had issues as that is done per AZ, and there could be different resources per AZ
+* allows cross zone LB
+* Come in 3 forms
+    * Classic lb (CLB)
+        * cross zone Lb needs to be enabled
+    * Application lb (ALB)
+        * cross zone Lb enabled by default
+        * target group
+    * Network lb (NLB)
+        * target group
+* LB have heath checks build in
+
+## Elastic Load Balancers: Part 2 - Classic Load Balancers
+* listeners need to be set up (e.h. http listening)
+* the LB has a  security group
+* restrict access so the individual server can not be accessed
+* index.php / health check
+    * can set settings to wait for reposne or the number of fails before it gets marked
+* (instances) resources are associated directly
+* even distribution of services
+* enable cross zone LB
+* if the session needs to stick, you can enable stickyness
+* session stickytness
+    * disabled
+    * set to LB generated cookies
+    * enable application enabled cookie stickiness (stored on the client)
+* listener can also use HTTPS
+* you can use SSL offloading (cert is on the LB and connection to server is HTTP)
+    * reduces ssl overhead
+    * need to deply ssl certiifcate on LB
+* you can only have a single listener on a single port
+* can't do layer 7 requests
+* no high level granularity
+* not suggested to be used
+* new platform should use application LB
+* classic LBs have no public IPs
+* do not use the IP, use the A recod name to interact with the LB
+
+## Elastic Load Balancers: Part3 - Application Load Balancers
+* 
