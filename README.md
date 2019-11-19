@@ -1,2 +1,2 @@
 # AWS-SA-PRO
-LinuxAcademy notes for AWS-SA-PRO
+My LinuxAcademy study notes for the AWS-SA-PRO
