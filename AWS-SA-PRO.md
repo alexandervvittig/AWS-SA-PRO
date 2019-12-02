@@ -1664,4 +1664,1068 @@ IP addressing in VPC (assuming 10.0.0.0/24)
 * do not use the IP, use the A recod name to interact with the LB
 
 ## Elastic Load Balancers: Part3 - Application Load Balancers
+* Work up to layer 7
+* can see different paths on URL
+* ALB is reccomended for VPC (default)
+* perform better and are cheaper than classic LB
+* IPv4 or IPv6
+* http or https
+* rather than associating instances, you associate a target group
+    * TG can be either instance id, Ip address or Lambda function
+* you can specify success code (usually 200 is success)
+    * you can put a list
+    * list multiple success codes
+* can host multiple applications (domain names)
+* APP can cope with multiple certificates
+* host or path way based rules
+* supports ecs, https, websockets
+* accesss logs, WAF and sticky logs
+* HTTP 2 is support (128 requests at the same time)
+* can communicate with lambda or ec2 instances
+* can link with container services (classis LB can't do that)
+* when pasth or host based routing is needed
+* when URL redirect is needed
+* can authenticate traffic (can handle ID federation)
+    * before application is reached
+* can monitor health of each service
+    * defined on the target group level
+* ALB have better performance
+
+## Elastic Load Balancers: Part4 - Network Load Balancers
+* NLB
+    * operate on layer 4
+    * TCP layer
+    * provide extreme performance
+    * can caope with more transactions per seconds
+    * TCP has lower processing overhead
+* support static IP addresses
+* supports ultra low latency (faster than classic LB and app LB)
+* work similar than App LB [with target groups]
+* ALB -> connection to LB is a single encrypted connection
+    * LB can make a second connection based on listener
+    * not a single connection but two
+* NLB -> does not interact with encryption
+    * reads header and forwards data
+    * uninterrupted end to end encryption
+    * only supports TCP (not UDP)
+    * pikc when volitile workload
+    * high performance
+    * can route traffic to IPs outside of the VPC
+    * preserves the source IP of the client
+* [Resources - LBS](https://aws.amazon.com/elasticloadbalancing/features/#compare)
+* LBs can be used in between app or web services
+* LBs offers a way to cope with failure by decoppling
+
+## CloudFront Architecture: Part1
+* Cloud Front - CDN
+    * content delivery network
+* Cloud Front operates around distribution
+    * web districbution
+        * static or dynamic content 
+            * such as HTMl, CSS, php
+            * media files
+        * live streaming
+    * RTMP
+        * only for Adoble Flash media server
+        * **MUST** be stored on S3
+* Default cache behavior
+    * Viewer Protocol Settings
+        * can connec HTTP or HTTPs
+        * will redirect to HTTPS
+        * HTTPS only
+        * Get,Head
+        * get,head,options
+        * get.head,options,put,post, patch,delete
+        * can configure cookies 
+    * Origin Protocol Settings
+        * deploy to US, canada and europe
+        * deploy to US, CA, EU AND Asia and Africa
+        * Use ALL Edge locations (best perfomrmance)
+        * can link a web ACL / AWS WAF
+            * change can take up to 45 minutes
+        * specify domain name 
+            * specift SSL (ACM) or bring your own
+            * SSL needed dedicated IP address (extra cost) for older browsers
+            * SNI can import a cert and it will pass the name
+
+## CloudFront Architecture: Part 2
+* Origin fetch can be a S3 bucket
+* behavior -> match pattern
+* behavior -> where you can set advanced settings for the CDN
+* not set on a distribution
+* origin fetch if it was never requested
+    * requests it from the cache (cache hit) to the edge location
+    * regional cache -> bigger version of edge location
+1. edge location
+2. then regional cache
+3. does origian fetch on both location
+* Lambda on the edge
+* Viewer request,viewer response, origin request, origin response
+* restrict content / cloud front security
+* by default, there is no geo restriction
+* invalidate content
+* you can wait for objects to expire or manually expire them
+* can take up to 45 minutes for redeploy
+
+## Creating and Working with Distributions
+* web/rtmp distribution setup is the similar
+    * rtmp has less options
+    * Crucial limits
+    * rtmp ONLY when using adobe
+* you can create origin groups
+* configured by behaviour pattern path matching
+* use cname to access default distribution
+* by default the distribution comes by default with HTTP/HTTPS
+* need to use certificate if you use custom domain name
+* ACM, auto renew
+* add SSL capability to buckets and other services
+* SNI (Server Name Indication)
+* Using browsers that don't support SNI you need to enable exta feature that supports all clients (comes with extra charge)
+* TLSv1.1_2012 -  good for older clients yet good security
+* HTTPv2 -> comes with performance enhancements
+    * HTTPv2 should be the default
+* Default Root Object -> index.php
+    * gets autmatically appended to URL
+* deployment architecture, deploying it to the edge location can take up to 45 minutes
+* rather add non configured features first, then later adding and waiting for the config to push
+* you can enable, disable or delete a distribution
 * 
+
+## Working with Custom Origins
+* to use a custom origin server, the edge location need to be accessible
+* needs to be on the web
+* can be on premise or in the web
+* S3 bucket introduces fixed features
+    * origin path (where the object exists)
+    * restrickt bucket access
+    * custom headers
+    * origin protocol and viewer protocol are linked
+        * e.g. bucket uses HTTPS
+* more options to set the protocol when using a custom origin
+    * specify HTTP, HTTPS or match viewer
+* can set both HTTP/S ports
+* set custom headers
+* mainly used for on prem deployment and legacy
+* needs public IP addressing
+* can't use this if you have S3 as an origin
+
+## CloudFront and Security: Part 1
+* cloudfront can filter traffic before it reached the edge loction
+    * might have multiple edge locations in proximity 
+    * rather than directly accessing the storage, client needs to acess the origin
+    * auto does edge filtering for valid URL 
+    * allows for user configuragee layer 7 firewall
+* SSL certificate requirements
+    * not a single connection
+        1. Between the client and the edge location
+        2. between the edge location and the origin
+    * need to make sure edge location installed certs needs to be publicly trusted cert
+    * can't use self signed cert, ned to be issues by a publicly trusted CA
+    * naming is important, origin cert name must match certificate name
+* does not restrict access by default
+    * if you browse S3 diretly
+    * OAI origin access identity
+        * virtual identity
+        * gets deployed to edge location 
+        * can restrict access only to origin identity
+
+## CloudFront and Security: Part 2
+* ideneity can generate a pre-signed URL to a private object
+* anyone can generate a pre-signed URL
+* you can access the object via the identity that created the URL
+* pre-signed URL can expire
+* cookies extend this capability
+    * allowing access to an object type or area/folder and don't need a specifically formatted URL
+* not enabled on a distribution level
+* set on the behavior level
+* once enabled and set this behaviour is no longer publicly accessible
+* can not use signed url AND public access
+* Trusted Signers -> private and can not be used for public content
+* RTMP can't use cookies, onlt signed cookies
+* signed URL
+    * used if single files or single URL
+* Signed cookies
+    * used if access to whole area
+* GEO restriction
+    * can be set on distribution level
+        * whitelist (allow country)
+        * blacklist (deny country)
+    * gets client IP address and checks with edge location
+* only base it on the IP that is attempting to access the object
+* 3rd party geo restriction
+    * default is private (via signed URLs)
+    * needs private behaviour configured
+    * needs additional compute
+* Field Level Encryption
+    * allows to define and allocate a key
+    * once data reaches edge location t is encrypted all the way back to edge location
+        * e.g. dynamo db data is encrypted
+    * used for anything that is truly sensitive (PII, health etc)
+    * public private key pair
+    * [Field Level Encryption](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/field-level-encryption.html)
+
+## Optimizing Caching
+* cache hit
+    * fetched from edge loction
+* cache miss
+    * CF has to fetch it from origin
+* You want as many hits as possible
+* set distribution settings and edit behavior
+    * change the TTL value
+    * origin can specify object cache TTL value
+    * 86400 default value (24 hours)
+    * will be purged after timer is off
+    * if content is static, increase value
+    * if content is dynamit, decrease the value
+* CF will cache direct URLs
+* if URL is queried directly via query string, it is a different object, thus it would re-query origin
+* by default CF does not pass on query string or cookies
+* by defauly CF does not forward any querystrings
+* you can set that it DOES forward query strings
+    * every query string triggers a cache miss
+* you can forward ALL query strings to an application and whitelist certain query strings
+* [Caching Info](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/ConfiguringCaching.html)
+
+## Lambda@Edge
+* per behaviour basis
+* function need to already exists
+* can invoke function based on event:
+    * viewer request
+    * viewer response
+    * Origin request
+    * origin response
+* pick based on when you want it onvoke and what functionality you want
+* once invoked it gets pushed to edge location 
+* Lambda is provided with additional information on execution
+* inspect cookies from client to origin server
+* A/B tesing
+* different layout or quality of image based on device
+    * e.g. lower res on mobile phone
+    * different lanaguage based on location
+    * dfferent cookie based on browser
+    * etc
+    * needs access based on IAM role
+* needs to be deployed in US-EAST1 or Virginia
+* are fully featured
+* [Lambda Resources](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-requirements-limits.html)
+
+## Logging, Reporting, and Monitoring
+* CF integrates with other logging and monitoring products
+* logs can be stored on S3
+* can monitor API calls
+* feeds data into CloudTrail
+* can use SNS for notifications 
+* can use lambda to trigger other actions
+* logs can be stored on S3, make sure there is an ACL that allows the identity to access
+* can access client side and server side logging
+* includes billing and analytics per distribution bases or all distributions
+
+## Route 53 Architecture
+* AWS DNS product
+* public (from the internet ) and private (form within the VPC) dns server
+* can register and host domains
+* communicates changes to global DNS platforms
+    * register
+        * register nativly
+        * transfer domain
+        * dns records stores nameserver records
+    * host 
+        * registered on godaddy
+        * nameserver on Route 53
+            * requires 4 nameservers
+            * edit registered domains
+* nameservers need to point to physical servers provided by the domain hoster, indie it needs a hosted zone recrord
+* route 53 creatres a private hosted zone (only availalbbe via VPC)
+* public hosted zone (internet accessable)
+* record types
+    * A (ipv4)
+    * cname (points host/name to other host/name)
+    * mx (mail servers)
+    * spf ( email authentication)
+    * AAAA (ipv6)
+    * TXT (textual data)
+* TTL value (how long records are cached)
+* can setup routing policies
+* can configure health checks
+    * monitor health of endpoints
+    * TCP, HTTP , HTTPS
+    * port
+    * path
+* Alias updates automaticallty, can be used behind CF and LB
+* S3 can be backup to original sources
+* can be as backup if main website is down
+* health checking is not going to detect single instance failure
+    * will detect failur eof single LB or entire region
+* private hosted zone
+    * associated with VPC
+    * only accessible for DNS lookups within the VPC
+    * configured as default
+    * needed EC2 relay server for outside VPC
+* AWS added inbount and outbound endpoints
+    * can configure inbound endpoint whic creates elastic IPs inside the VPC which can be used to reference private DNS hosted zones
+* outbound endpoints act as origian endpoints for lookups
+    * create outbound endpoint , associate lookup rules
+    * EC2 instances would find INTERNAL resources, lookup forwarders
+
+## Advanced Route 53 Concepts
+* Avanced Routing Methods
+    * Simple Routing Type
+        * Can only create a single record
+        * can add multiple records
+        * for round robin (returns all values in random order)
+    * Failover Routing Method
+        * Can define multiple records
+            * primary needs to be associated with health check
+        * second record can point to a different location (e.g. S3 bucket)
+    * Geolocation Routing
+        * specify location for a given record set
+        * route particular country to particular S3 bucket
+    * Latency
+        * Route 53 keeps monitoring latency and you can specify targets
+        * Route 53 will route traffic to the target with the lowest latency
+    * Weighted Routing Type
+        * can assign multiple records and weight them
+        * e.g. 90% of the traffic goes to target A, the rest to target B
+        * good for A/B testing
+    * multi value answer (similar to simple)
+        * similar to simple but can associate health checks with each
+* you can combine multiple routing methods
+    * can get version controller
+    * does traffic flow tracking
+
+## Storage Introduction
+* S3 - Object storage, highly scalable, accessable from anywhere
+* Glacier - designed for long term cold or archive storage
+* EFS - Network File System designed to be shared acorss multiple instances
+* FSX - new sotrage product
+* Storage Gateway - migrate data or scale existing storage
+
+## S3 Architecture: Part 1
+* Simple Storage Service (S3)
+* Object Storage System (not file based)
+    * flat structure
+    * no hierachy
+    * objects itself holds the metadata
+    * name is a unique indentifier
+* can store an unlimited number of objects
+    * finite number of buckets, but buckets can hold infinit number of objects
+* Object stored in storage class (differetn storagte classes)
+* there are different versions of objects
+* complex set of permissions (resources, access control identity)
+* Life cycle policies
+* host static files and websites
+* S3 can be an origin for CloudFront
+* Foundation for Storage Gateway
+* is a ```GLOBAL``` service
+    * buckets need to be globally unique
+* you can only have 100 buckets per AWS account
+    * you can request more by opening a ticket
+    * just be aware you can't have thousands of buckets
+    * you need to sub-divide a bucket
+* Names of the bucket 
+    * host static web content (must match DNS naming standard)
+    * SSL / HTTPS -> Must match certificate nameing
+    * must be all lower case
+    * no underscores in name
+    * name should not end with a dash 
+    * must be between 3 and 63 characters
+    * must start with a lower case letter or number
+    * avoid periods in name
+* cross origin resource sharing (CORS)
+    * allows bucket  to call content from another bucket
+    * server webcontent from a different bucket sources
+    * bucket can get encrypted
+    * Object
+        * flat structure though it looks like a folder
+        * key value set of information
+            * key is the name of the object
+                * simple key 'cat.jpg'
+                * complex key: 'catpics/2019/kyo/cutecat.jpg'
+            * '/' is a delimiter, presented as folder structure, but it is flat
+        * version ID, if versioning is enabled
+        * Value  - content of the object from 0 bytes to 5 TB
+        * meta data - extra key value data for the object. user defined and system meta data
+        * subresources - ALC or Torrent information associated with an object
+        * ACL information about the permissons on an object
+
+## S3 Architecture: Part 2
+* You can grant permissions via various ways:
+    * Identity Policy (attached to IAM accounts)
+    * Bucket Policy
+    * ACL applied on object level
+* S3 is a Global service
+* Can talk to endpoint as long er there is a VPC endpoint
+* S3 can generate event on bucket interaction
+    * send those to Lambda or SNS, SQS
+* event driven architecture
+* default billing method
+    * Storage Class
+        * storeage class defines durability and availability
+        * transfer pricing (egree)
+        * uploading is free
+        * GB per month charge for data capacity used
+        * price for puts and gets
+* replication, you can replicate bucket content to a different bucket
+* analytics of storage classes, can analyze data in an S3 bucket
+    * bucket metrics are periodically captured (not real time)
+    * can look at data tranfer, object counts etc
+* bucket inventory, reporting on existing objects , e.g. done with athena
+* you are able to make objects in the bucket public
+* you can add blockers on a bucket
+    * permissions -> public access settings
+    * by default public access is disabled
+    * defined either
+        * per account
+        * per bucket
+
+## S3 Storage Tiers, Intelligent-Tiering, and Lifecycle Policies
+* all classes offer 11 9 (99.99999999999) object durability
+* S3 Storage Class / Tier
+    * S3 Intelligent Tiering
+        * designed for unpredicatable acces patterns
+        * moves objects based on access patterns
+        * per object monthly handling fee
+        * no retrival fee
+        * 30 day minimum charge
+    * S3 Standard
+        * general use / all purpse
+        * default option
+        * 99.9% object availability
+        * 3+ AZ replication
+        * most expensice tier but has no minimum object size and not retrival fee
+    * S3 Standard-HA
+        * ??
+    * S3-IA (infrequent access)
+        * design for fast retrival of infrequent accessed objects
+        * 99.9% availaable (99% SLA)
+        * 3+ AZ replication
+        * milliseconds first byte latency
+        * cheaper than standard tier
+        * 30 day minimum storage charge per object
+        * 128KB minimum storage charge
+        * object retrieval fee
+    * S3 One Zone-IA (infrequent access)
+        * for non-critical, reproducable objects
+        * 99.5 % availability (99% SLA)
+        * 1 AZ replication
+        * 30 day minimum storage
+        * 128KB minumum storage charge
+        * object retrieval fee
+        * cheaper than standard or just IA tier
+    * S3 Glacier
+        * designed for long term archival storage (not as backup)
+        * may take fro minutes to hours to retrieve data
+        * cheapest S3 class
+        * 3+ AZ replication
+        * 90 day minimum charge
+        * 40 KB minimum storage charge
+        * object retrival fee
+    * S3 Glacier Deep Archive
+        * long term archival storage, as alternative to tape
+        * cheaper than regular Glacier but retrieval takes longer
+        * 180 days minimum charge per object
+        * 40KB minimum storage  charge
+        * object retrieval fee
+
+* S3 Lifecycle Polices
+    * You can create policies to automatically move objects into different tiers
+        * e.g. medical data is in Standard by default, after 30 days it moves into IA and after 180 days it goes into Glacier for long term archive
+
+* [S3 Storage Info](https://aws.amazon.com/s3/storage-classes/)
+
+## Versioning and Locking
+* Versioning
+    * by default every object in an S3 bucket is unique
+    * if you move an object with the same name in the buckt, it ```overwrites``` the original object
+    * versioning allows us to add a unique Id onto each object version
+    * you can not DISABLE versioning, only SUSPEND it
+    * you can download and delete versions
+    * each version is unique and isolated
+        * other versions can be in different storage classes
+    * deleting the object while versioning is deleted, does not actually delete, just sets a 'delete' flag
+    * you can delete specific versions by specifying the version ID
+    * you need versioning enable to utilize cross region replication
+    * version is required as a supporting feature for other features
+    * simple audit trail as it keeps copies
+    * comes with chargers and cost got objects
+    * cost is small compared to risk of losing things
+    * you can define lifecycle polices on versions
+
+* Locking
+    * Cross Region Replication is not available while lock is enabled
+    * Retention Period
+        * prevents updates or deletions for a period of time 
+    * Legal Hold
+        * do the same as retention period but there is no expiration date
+        * legal holds are indendant of retention periods and are used for legal or audit situations 
+
+## Controlling Access to S3 Buckets
+* All buckets and objects are private by default
+* only the bucket or the object owner has access
+* the bucket trusts the creating account by default
+* IAM Root user with Administrative privilages cna give other IAM users access to the bucket
+* Can only grant access to users in the same AWS account
+* You can utilize polices that are attached to IAM Users or Groups
+* You can define an IAM role and attach a policy to that role which is allowed access to that buckt, <br> so identities in other accounts can assume that role and get access that way
+* If an IAM users access the bucket, it called an **'Authenticated Identity'**
+* you might need to grant access to non authenticated users
+    * IAM roles, to assume the role
+    * resource policies (bucket polices)
+        * allows unauthenticated users to access objects
+        * attached directly to a bucket
+        * only a single policy per bucket
+            * can have multiple statements in
+        * resources not attached to an identity, thus we need a principal key value defined in the policy
+        * Bucket polices can grant access to anonymous users
+        * can restrict access to certain IP address 
+            * only allow certain ranges
+        * restrict access to certain times of day
+        * insist certain type of encryption
+        * policies applied to the entire bucket
+        * bucket polices are alaso capable on restricting based on object tag or name
+            * e.g. tag as confidential and prevent access
+* Bucket Policies are reccomenteded
+* ACL (legacy)  
+    * grant public access
+    * some legacy AWs services need it
+    * simple permission sets (list, write, etc)
+    * can also be applied to object
+    * Object specific permissions via URL is using ACL
+* Pre signed URLs
+    * IAM users with fill permissions on the AWS account
+    * ```aws s3://$BUCKETNAME```
+    * pre signed url is an access where the authentication happend on creation
+        * pre-signed URLs are pre-authenticated
+        * has an expiry time
+        * Pre signed URL are generally used to provide access to restricted data
+        * you can create a pre-sign url to an non existing object
+* [Referenced Pre Signed URL](https://docs.aws.amazon.com/AmazonS3/latest/dev/PresignedUrlUploadObject.html)
+
+## Cross-Region Replication (CRR)
+* Is a feature that you can replicate a Source bucket to a Destinatio bucked in a different AWS Region
+* it's one way only
+* requires versioning enabled
+* no retrospective replication from the point of enabling it
+* SSE-C is not supported [SSE =  customer-provided encryption keys (]
+* SSE-S3 is enabled by default
+* SSE-KMS can be enabled
+* Storage class and object ownership is maintened (same as in source)
+* only non-system actions are replicated, lifecycle event are not
+* if the bucket ower has no permissions, objects are not replicated
+* an IAM role provides S3 with the permissions required to add to the destination
+
+
+## Object Encryption
+* Client Side Encryption
+    * encrpyt the object before it is stored on S3
+    * client is reponsible for the encrption process and key management
+    * use AWS SDK
+* Server Side Encryption
+    * offload the process to S3
+    * sending S3 an unencrypted object and receive an unencrypted object
+    * most commonly used in PROD
+    * Server Side Encryption with Customer Provided Key (SSE-C)
+        * user uploads unencrypted object
+        * user provides key to use
+        * S3 takes both, encrypts the file, and discards the key
+        * YOU are responsible for the key when you want to decrypt the object
+        * You need to have both the object name and the key 
+        * S3 will pass it back in plain text form
+        * Limitation:
+            * can't be used when using cross region replication
+        * can be used when you have your own HSM / on prem encryption hardware
+* SSE-S3 is the default
+    * uses server side encryptio
+    * each object is encrypted with a random key
+    * random key is encrypted by a master
+    * S3 has the master key
+    * AWS handles the process and the S3 master key is maintained by AWS
+    * Master key gets frequently rotated
+* SSE-KMS
+    * 2 keys, AWS KMS and Client Master Key
+    * using this it allows you to split the roles
+    * S3 admin can do all the tasks he needs but has no data access
+    * another user can't admin S3 but has the data key
+    * can be used cross accounts
+    * you can add auditing to the process (e.g. with cloud trail)
+* The BUCKET is not encrypted but the OBJECT(s)
+* if no custom key is selected , AWS provides the key 
+* AWS key is rotated every 3 years
+* self provided keys can be updated ever year
+* You can choose between AES-256 or AWS-KMS
+* You can set a bucket policy that only allows AES-256 encrypted objects
+
+## Optimizing S3 Performance
+* Standard VS Multipart Upload
+    * by default single part upload is used
+        * using a single data stream
+        * can only be up to 5 GB
+        * limits speed of the transfer (speed between you and the endpoint)
+        * if there is network interruptions, you have to restart the upload
+    * Multipart
+        * specify multipart
+        * provides upoad ID
+        * you can split the object and upload the parts to the ID
+        * networking issues are reduced
+        * parallel
+        * you are billed for each component
+        * once upload finished, you can issue 2 commands
+            * complete
+                * S3 will merge the split object into the complete object
+            * abort
+                * S3 will discard the split pieces and you are not billed for further usage
+        * max size is 5 TB
+        * max of 10k parts
+        * each part can be 5 MB up to 5 GB
+
+* Transfer Acceleration
+    * setting that need to be enable per bucket
+    * can be done via concole, cli or API
+    * provides additional endpoint
+    * Uses CloudFront edge location providing local edge locations which faster speeds
+    * AWS submitted via AWS backbone, thus faster
+
+* Partition and Object Naming
+    * flat structure, collection of object
+    * prefix / delimiter (forward slash)
+    * bucketname/collectionname/infoname/file.extension
+    * single partition can suppolt 3500 puts and 5500 gets
+        * S3 can split partitions to speed it up
+    * per partition performance
+    * if names are kept as similar as possible S3 can better split the name into partitions
+    * if you never need more than 7000 or more than 5500 you never need to worry about naming, if you need more you have to watch the nameing convention
+    * don't use dates as starting name as it will limit partitioning
+
+## Glacier Architecture
+* In the AWs console you can onlyt create a vault
+* high level settings only
+* Galcier as storage class VS isolated product
+* cheapest way to longterm store data and arhice with SLOW retrieval
+* most interactions are done via API or AWS CLI
+* you can create 1 or more vaults in a region
+* nickname needs to be unique per region per account
+* accounts can contain up to 1000 containers per region
+* archive could be a single file or a blob of data 
+* descriptions can only be added on creation
+* descriptions can not be ammended after the creation
+* interacting with glacier, it's an asychonouse communiction
+* glacier vault inventory contains a list with all the archives in the vault
+* no meta data is listed
+* no user definable meta data exists
+* only archive ID and optional description
+* an archive can not be edited, only deleted
+* Speeds:
+    * expedited retrieval
+        * completed in 1-5 minutes for anything below 250MB
+    * Standard
+        * jobs usually take 3-5 hours
+    * Bulk
+        * economic option for larg eamounts, typically 5-12 hours
+* by default when requesting an archive the entire archive gets retrieved
+* you can however requesting specific component of the archive
+* archives are a black boxes and can not be seen in until retrieved
+
+## EFS Architecture: Part 1
+* Elastic File System
+* Shared FileSystem that can be access from multiple resources and from on-prem 
+* EBS volumes can only be attached to 1 instance and only to the same AZ
+* Uses NFS (Network File System)
+* Supports NFS 4 and 4.1
+* can mount into filesystems
+* S3 would not be used for shared storage as it can't be mount in the file system without 3rd party software
+* EFS is only per VPC by default
+* once filesystem is created you need to create mount targets
+* EFS uses NFS, so it uses IPs to connect
+* Each AZ should have a mount target
+* will be created in ONE subnet foreach AZ
+* you can attach a custom security group or use the default VPC one
+* EFS does support encyption: 
+    * at rest
+        * must be enable when creating the file system
+        * need to select a master key (either AWS dfault key or use your own CMK)
+        * metadata and filedata need 2 keys if using your own key
+        * it's handled automatically and by only 1 key ifs useing AWS default
+    * at transit
+        * data between instances and mount targets
+        * handled on the client side
+* Amazon EFS Util make interacting with EFS easier
+    * ```sudo yum install -y amazon-efs-util```
+
+## EFS Architecture: Part 2
+* You need to know IP address to mount file syste manually
+* file system ID is all that is needed with utilties installed
+* mount targets are wrapped in security groups
+* ec2 instances are wrapped in security groups as well
+* instances are not in default group
+* default security groups allows communication 
+* make sure both instance and EC2 target are in the same security group
+* bill is based on usage
+* permission is set by AWS (AWS permissions policy with identity)
+* encryption needs the keys
+* linux file system permissions (chmod)
+* You can use AWS backup to back EFS up
+* use AWS Datasync to migrate data
+* Performance Mode (can only be set when creating the FS)  
+    * General Purpose (default)
+    * MAX I/O ( higher latency, good for parallel processing)
+* Throughput mode (can be changed later)
+    * Bursting (default)
+    * provisioned
+* EFS is HA across AZs
+* User cases:
+    * big data / analytics
+    * large scale and prorallel
+    * media processing
+    * content management / web sharing 
+    * home directory for applications
+    * shared log storage (cloudwatch logs vs EFS)
+*   Anti use
+    * single machine 
+    * object storage or cloud fron
+    * temporary storage
+
+* EFS can scale,supports up to 10GB speed
+* on prem can connect 
+* make sure drect connect or VPN is not a bottleneck
+
+## FSx Architecture
+* File System Product
+* Storage Product where you can provision 3rd part file system
+* Amazon FSx ( Windows SMB based storage)
+* Amazon FSx Luster (for high level performance)
+* by default not HA, only a single AZ
+* needs to implement with MSFT Active Directory
+* you can setup a trust for access
+* private only product from within the VPC
+* security architecture similar to EFS
+* can backup to S3 using VSS
+* You can use DSF for replication 
+* SIFs utility to access it from Nix
+* minimum 300Gb max, 300 Petbyte, large scale
+* encryptred by default
+* encrypted is managed by KMS
+* you need a trust between endpoints and server
+* you can setup multi region replication
+
+## File Gateways vs. Volume Gateways vs. Tape Gateway
+* Storage Gateway is a software appliance that is usually run on an existing virtualized on-prem network
+* ideal to migrate data or capacity extension
+* 3 Versions:
+    * File Gateway
+        * used for NFS or SMB connections
+        * for large on-prem file servers
+        * orchestrates between on-prem file server and cloud storage
+        * 1:1 mapping,mapped by filename but stored as object
+        * good way to migrated data IN to AWS
+        * ingress is free (moving data into AWS)
+        * once in S3 you can use life cycle policies
+    * Volume Gateway
+        * block storage volumes (EBS)
+        * can be mapped to on-prem servers
+            * cached volume arch
+                * primary storage is in S3
+                * only cache data is locally
+                * good for large data to extend on-prem storage
+            * stored volumne architecture
+                * S3 for snapshot
+                * main data is on prem
+                * mainly for backup
+    * Tape Gateway
+        * avoids the need for on prem tape hardware
+        * integrate SG with existing backup infrastructire
+        * acts as ISCSI network (SAN)
+        * talks  to the endpoint via network
+        * can setup virtual tapeshelve
+        * leverages Glacier
+        * reduces cst (tape, storage, transpostation)
+        * still off-prem location for 3-2-1 backup
+* SG can be deployed locally as well
+* good for backup or disaster recovery
+* [Storage Gateway Reference](https://docs.aws.amazon.com/storagegateway/latest/userguide/StorageGatewayConcepts.html)
+
+## EC2 Self-Managed Databases
+* EC2 with RBS attached and a Database Management system installed
+* need to install non supported DB type
+* Limitation:
+    * single EC2 instance on a single host in a single AZ
+    * no HA
+    * admin is responsible, nothing is automated out of box
+    * you need to manage and patch and harden the OS
+    * need to manuage logging and reporting
+    * lots or risk and managing overhead
+* But:
+    * can use snapshots for replication
+    * can configure other EC2 instance in a different region and repliacte
+* DBaaS vs self-managed
+* you have root level access (vs limited as a service)
+* rapid devisioning
+* you can choose location and configure elastic IPs
+
+## Database Data Models and Engines
+* SQL DB ( relational / Structured)
+    * RDMS (Relantional Database Management System)
+    * designed for  highly structured data and structure
+    * not as scalable and performant because of that
+    * not working well for a dynamic data
+    * structure needs to be defined upront
+* ACID System vs Base System
+    * ACID 
+        * Atomicity, Consistency, Isolation and Durability
+        * performance limitation
+    * BASE 
+        * Basic availability
+        * soft state
+        * replicates assume lack of consistency
+        * eventual consistency       
+    * Use SQL - Strucured Sequal Language
+    * Samples:
+        * Aurora
+        * RDS
+        * Athena
+
+* NoSQL DB (non-relational, unstructured)
+    * Samples:
+        * DynamoDB
+            * key value database
+            * data is a collection of keys and values
+            * zero structure between keys
+            * tables are usually not used and IF, there are no tables
+            * every item could have completely different values
+            * does enhance functionality
+            * row based
+        * Mongo DB
+            * Document DB
+            * collection of key values / documents
+            * no relationship between documents
+            * e.g. JSON object
+        * RedShift
+            * Column Based 
+            * bad for transactions
+            * sequential reading of columns
+            * good for reporting / analytics
+        * neo4j
+            * Graph based DB
+            * designed to keep track of rapidly changing replationship between the entities
+            * Amazon Neptune
+                * Managed Graph DB
+
+## Amazon Relational Database Service (RDS): Part 1
+* Uses Database Engines as a Service
+* Pick perfromance, HA, get a DB endpoint
+* might be slow to get provisened
+    * need subnet group for VPC
+    * AZ A
+        * need to pick subnet in AZ
+    * suppports various DB engines
+        * AWS Aurora
+        * MySQL
+        * MariaDB
+        * PostgreSQL
+        * Oracle
+        * SQL Server
+    * TDE - Transparend Data Encyption
+    * Encrpytion can only be set on creation
+    * Backups
+        * automatic
+            * default retention 7 days
+        * CLI
+            * 1 day, up to 30
+    * can do point in time recovery
+    * granularity and logging via cloudwatch and cloud watch logs
+    * can enable auto version updates
+    * can take up to 45 minutes to provision 
+    * syncronouse replication between nodes
+    * NO storage replication
+    * no access to slave node unless failover occures
+    * you can pick between various payment models
+    * backup and recovery
+        * backup to s3
+        * replicated accross AZ in the region
+        * not restoring to the existing DB but need to restore to new DB
+        * datastrings need to be updated after restore
+
+## Amazon Relational Database Service (RDS): Part 2
+* can create a read replica in the same AZ or a different region
+* asynchronouse replica
+* read replica good for high read but does not improve write performance
+* can be used to upgrade between multiple DB versions
+* default parameter group can be edited
+* default option group edited (features)
+* automated backups can be preserved if the DB is going to be deleted but they will expire after retention period
+* [You can use IAM to login the database](https://aws.amazon.com/premiumsupport/knowledge-center/users-connect-rds-iam/)
+
+## Amazon Aurora Architecture: Part 1
+* better performance and reduced cost
+* architecture is different than RDS
+* all intances share the same storage platform
+* have common cluster storage volumne
+* database servers don't have to worry about replication
+* Database lives in the VPC
+* can use IAM DB authentication
+* Primary [r/w]-> Replica [r only]
+* no delay as it's usaing the same storage
+* better performance
+* Endpoit -> way to access components of a cluster
+* individual instances can be accessed via custom endpoints
+* replicas can automatically or manually fail over
+* have a replica (or multiple) in each AZ
+* can store up to 64 Tb, only billed for storage used
+* no initial upfront storage cost
+
+## Amazon Aurora Architecture: Part 2
+* Advanced functionality:
+    * backtrack (rollback DB to point in time)
+        * can restore backup without the need of a new database
+        * puts it back into a certain state
+        * short interruption rolling back
+        * handleded by the primary
+    * ability to clone DB
+        * Aurora maintains a difference, if you want to clone it, it keeps a differencial disk
+        * really fast cloning
+        * will allow multi master going forward
+        * can scale READ and WRITE
+        * parallel query functionality (needs to be enabled)
+        * use auto scaling by adding replica auto scaling (1 to 15) [for read only]
+
+## Aurora Global Database
+* cross region read replica
+* replicates with less lag and better performance
+* replication server handled by Aurora
+* parallel streams between replication servers and agent
+* can have multiple replicates talking to the same volumne
+* high throughput, low lag, quick recovery from region failure
+* can promote replica to primary thus  recovery time is faster
+
+## Aurora Serverless
+* provides API access
+* better for Lambda and automation integration
+* Aurora Capacity Unit
+    * specify minimum and maximum number of units
+    * build based on auto scaling group
+    * will be build between min and max
+    * after timeout cluster can get paused
+        * after 7 days, snap shot is taken and no ready compute
+    * operates in VPC,
+    * needs DB subnet group
+    * specify backup retention period
+    * you can NOT disable encryption
+    * connection to shared proxy layer
+    * AWS maintains a warm instance pool
+    * warm instance is allocated to you and the cluster
+    * old instance is retired
+    * any chached data is migrated out
+    * no connections are dropped, just might be a bit slower during the process
+    * does not work multi AZ
+    * failover  results in different AZ and new ACU 
+    * database snapshots can be used
+    * DataAPI needs to be enabled
+    * you can access cluster via API
+    * interact with data via the Query Editor
+    * still has the endpoint that could be used
+    * [Aurora Data API Reference](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/data-api.html)
+
+## Amazon Athena
+* serverless SQL like queries on data
+* store data on S3 in various formats
+* can be structured, semi-structured or unstructured
+* uses schema on read
+* data is not changed, and schema is rebuild every time query is run
+* no server need
+* pay for amount of data processed
+* no upfront infratsructure cost
+* make sure data is column formated
+* you can compress or index data
+* setup
+    * define table definition (with a SQL query)
+    * define data structure (attributes)
+    * define data location
+    * create table based on that data
+    * table will queried
+    * no actual data was created, just the datble to interact with the source data
+    * schema on read 
+    * product logs are stored on S3
+    * Athena can be used to read cloud trail logs (after access is granted)
+
+## DynamoDB Architecture: Part 1
+* Database as a Server (DBaaS)
+* can be in different regions
+* is in general key value store
+* acts as table
+* collection of items
+* no fixed schema
+* only mandatory thing needed it the primary key
+* item = row in database
+    * needs primary key, need to be unique
+    * could have item that is only the key
+    * can have 0 or 100 attributes (max can be 400kb)
+    * primary key can contain just a PK (partition/hash key)
+    * can be a multiple part key (still has to be unique)
+* Billing
+    * size of the item (totla amount of data stored)
+    * performance demand (read/write)
+        * read  -> 4kb
+        * write -> 1kb
+    * always consumes at least 1 read or write (always rounded up)
+* 2 read actions
+    * scan
+        * by default returns everything
+        * consunms capacirty to return everything
+        * can use filters as well
+        * don't have to restrict it
+        * if filtering based on no primary key, it will consume ALL capacity
+        * use query when possible
+        * can use various pertition keys but needs to load entirely table to do so
+    * query
+        * efficient
+        * specift partition key value
+        * billed for total sisze of all items
+        * can filter based on sort key
+        * sort key can reduce data used (single or range)
+        * __filters do not reduce consumed capacity!__ (only the sort key reduces)
+        * can't query multiple partition keys
+
+## DynamoDB Architecture: Part 2
+* each table conists of partition (piece of storage)
+* each partition can hold:
+    * 10 Gb of data
+    * 1000 write capatiy units
+    * 3000 read capacity units
+* If table grows bigger than 10 gb, another partition is added
+* if you go over 1k write or 3k read, an additional partition will be added
+* partitions can not be removed
+* spread items as evenly as possible over many partitions
+* table has buffer
+    * no not use buffer if possible
+* you can create index:
+    * local secondary index
+        * can only be create at the time of table creation
+        * allow you to speciy a different sort key
+        * share capacity of the main table
+    * global seconday index
+        * create index that has different partitions and sort keys
+* if attibutes aren't projected it will cnosume a lot of data
+* query index rather than entire table
+    * consumes only items it pulled (less data)
+* Consistency Model
+    * could create item and add record
+    * write query that might not see the new item immedialtely
+        * eventual consisteny
+            * consumes half of the capacity
+        * instant consttancy
+            * consumes full capacity
+* can backup to S3 (stores both data and config and index) and restore
+* offers point in time recovery (needs to be enabled explicitly)
+* by default not encrypted (you can encrypted it on a table basis)
+* [Secondary Indexes in DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-indexes-general.html)
+* [Read Consistency](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html)
+* allows full metrics exposure
+* can define alarms via cloudwatch
+* global tables
+* streams / triggers
+* auto scaling
+* can purchase reserved capacity
+
+## Advanced DynamoDB: Part 1
+* Advanced DynamoDB functionality
+    * Table Performance
+        * apply read and write performance
